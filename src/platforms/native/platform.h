@@ -165,6 +165,7 @@
 #define TRACE_IRQ   NVIC_TIM3_IRQ
 #define TRACE_ISR   tim3_isr
 
+#undef VERBOSE_DEBUG
 #ifdef ENABLE_DEBUG
 extern bool debug_bmp;
 int usbuart_debug_write(const char *buf, size_t len);
