@@ -35,6 +35,7 @@ static bool nrf51_cmd_read_hwid(target *t);
 static bool nrf51_cmd_read_fwid(target *t);
 static bool nrf51_cmd_read_deviceid(target *t);
 static bool nrf51_cmd_read_deviceaddr(target *t);
+static bool nrf51_cmd_read_deviceinfo(target *t);
 static bool nrf51_cmd_read_help(target *t);
 static bool nrf51_cmd_read(target *t, int argc, const char *argv[]);
 
@@ -49,6 +50,7 @@ const struct command_s nrf51_read_cmd_list[] = {
 	{"fwid", (cmd_handler)nrf51_cmd_read_fwid, "Read pre-loaded firmware ID"},
 	{"deviceid", (cmd_handler)nrf51_cmd_read_deviceid, "Read unique device ID"},
 	{"deviceaddr", (cmd_handler)nrf51_cmd_read_deviceaddr, "Read device address"},
+	{"deviceinfo", (cmd_handler)nrf51_cmd_read_deviceinfo, "Read device information"},
 	{NULL, NULL, NULL}
 };
 
@@ -65,10 +67,10 @@ const struct command_s nrf51_read_cmd_list[] = {
 #define NRF51_NVMC_CONFIG_EEN		0x2						// Erase enable
 
 /* Factory Information Configuration Registers (FICR) */
-#define NRF51_FICR				0x10000000
+#define NRF51_FICR						0x10000000
 #define NRF51_FICR_CODEPAGESIZE			(NRF51_FICR + 0x010)
-#define NRF51_FICR_CODESIZE			(NRF51_FICR + 0x014)
-#define NRF51_FICR_CONFIGID			(NRF51_FICR + 0x05C)
+#define NRF51_FICR_CODESIZE				(NRF51_FICR + 0x014)
+#define NRF51_FICR_CONFIGID				(NRF51_FICR + 0x05C)
 #define NRF51_FICR_DEVICEID_LOW			(NRF51_FICR + 0x060)
 #define NRF51_FICR_DEVICEID_HIGH		(NRF51_FICR + 0x064)
 #define NRF51_FICR_DEVICEADDRTYPE		(NRF51_FICR + 0x0A0)
@@ -76,6 +78,15 @@ const struct command_s nrf51_read_cmd_list[] = {
 #define NRF51_FICR_DEVICEADDR_HIGH		(NRF51_FICR + 0x0A8)
 #define NRF52_PART_INFO					(NRF51_FICR + 0x100)
 #define NRF52_INFO_RAM					(NRF51_FICR + 0x10C)
+/* Device Info Registers */
+#define NRF51_FICR_DEVICE_INFO_BASE		(NRF51_FICR + 0x100)
+#define NRF51_FICR_DEVICE_INFO_PART		NRF51_FICR_DEVICE_INFO_BASE
+#define NRF51_FICR_DEVICE_INFO_VARIANT	(NRF51_FICR_DEVICE_INFO_BASE + 4)
+#define NRF51_FICR_DEVICE_INFO_PACKAGE	(NRF51_FICR_DEVICE_INFO_BASE + 8)
+#define NRF51_FICR_DEVICE_INFO_RAM		(NRF51_FICR_DEVICE_INFO_BASE + 12)
+#define NRF51_FICR_DEVICE_INFO_FLASH	(NRF51_FICR_DEVICE_INFO_BASE + 16)
+
+#define NRF51_FIELD_UNDEFINED				(0xFFFFFFFF)
 
 /* User Information Configuration Registers (UICR) */
 #define NRF51_UICR				0x10001000
@@ -256,6 +267,37 @@ static bool nrf51_cmd_read_deviceid(target *t)
 
 	return true;
 }
+
+static bool nrf51_cmd_read_deviceinfo(target *t)
+{
+	struct deviceinfo{
+		uint32_t part;
+		union{
+			char c[4];
+			uint32_t f;
+		} variant;
+		uint32_t package;
+		uint32_t ram;
+		uint32_t flash;
+	} di;
+	di.package = target_mem_read32(t, NRF51_FICR_DEVICE_INFO_PACKAGE);
+	di.part = target_mem_read32(t, NRF51_FICR_DEVICE_INFO_PART);
+	di.ram = target_mem_read32(t, NRF51_FICR_DEVICE_INFO_RAM);
+	di.flash = target_mem_read32(t, NRF51_FICR_DEVICE_INFO_FLASH);
+	di.variant.f = target_mem_read32(t, NRF51_FICR_DEVICE_INFO_VARIANT);
+
+	tc_printf(t, "Part:\t\tNRF%X\n", di.part);
+	tc_printf(t, "Variant:\t%c%c%c%c\n",
+			di.variant.c[3],
+			di.variant.c[2],
+			di.variant.c[1],
+			di.variant.c[0]);
+	tc_printf(t, "Package:\t%s\n",(di.package==NRF51_FIELD_UNDEFINED)?"Unspecified":(di.package==0x2000)?"QF":"CI");
+	tc_printf(t, "Ram:\t\t%uK\n",di.ram);
+	tc_printf(t, "Flash:\t\t%uK\n",di.flash);
+	return true;
+}
+
 static bool nrf51_cmd_read_deviceaddr(target *t)
 {
 	uint32_t addr_type = target_mem_read32(t, NRF51_FICR_DEVICEADDRTYPE);
