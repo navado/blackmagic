@@ -136,6 +136,7 @@
 #define TRACE_ISR   tim3_isr
 
 #define DEBUG(...)
+#define debug_bmp 0
 
 #define gpio_set_val(port, pin, val) do {	\
 	if(val)					\

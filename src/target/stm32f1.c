@@ -188,7 +188,7 @@ static int stm32f1_flash_erase(struct target_flash *f,
                                target_addr addr, size_t len)
 {
 	target *t = f->t;
-	uint16_t sr;
+	uint32_t sr;
 
 	stm32f1_flash_unlock(t);
 

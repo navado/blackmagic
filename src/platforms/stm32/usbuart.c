@@ -261,9 +261,13 @@ enum {
 int rdi_write(int fn, const char *buf, size_t len)
 {
 	(void)fn;
+#ifdef USBUART_DEBUG
 	if (debug_bmp)
 		return len - usbuart_debug_write(buf, len);
-
+#else
+	(void)buf;
+	(void)len;
+#endif
 	return 0;
 }
 
